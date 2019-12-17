@@ -1,0 +1,24 @@
+@startuml
+title Roll Blind
+
+state Idle
+state RollUp
+state RollDown
+
+[*] --> Idle
+
+Idle --> RollUp : IRKeyUp
+Idle -> RollDown : IRKeyDown
+
+RollUp -> Idle : IRKeyOK
+RollUp -> Idle : SensorUp
+RollUp -> Idle : Timeout
+
+note "All transitions to action state must add\na timed transition back to Idle state" as N1
+
+RollDown --> Idle : IRKeyOK
+RollDown --> Idle : SensorDown
+RollDown --> Idle : Timeout
+
+
+@enduml
