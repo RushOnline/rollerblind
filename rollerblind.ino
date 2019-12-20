@@ -47,6 +47,9 @@ RollDown --> SlowDown : SensorDown
 #define IR_KEY_UP     0xFF629D
 #define IR_KEY_DOWN   0xFFA857
 
+#define TIMEOUT_UP    32000
+#define TIMEOUT_DOWN  29000
+
 // FSM events
 #define EV_ROLL_UP          1
 #define EV_ROLL_DOWN        2
@@ -97,21 +100,27 @@ IRrecv irrecv(12);
 decode_results results;
 
 void on_idle_enter() {
-    Serial.println("OK ENTER IDLE");
+    Serial.print("OK ENTER IDLE "); Serial.println(millis());
     motor.stop();
 }
 
 void on_rollup_enter() {
-    Serial.println("OK START ROLL-UP");
+    if (!at_top.blind()) {
+      Serial.print("ERR ALREADY AT TOP "); Serial.println(millis());
+      return;
+    }
+    Serial.print("OK START ROLL-UP "); Serial.println(millis());
+    motor.setSpeed(255);  // set max available speed
     motor.forward();
 }
 
 void on_rolldown_enter() {
     if (at_bottom.blind()) {
-      Serial.println("ERR ALREADY AT BOTTOM");
+      Serial.print("ERR ALREADY AT BOTTOM "); Serial.println(millis());
       return;
     }
-    Serial.println("OK START ROLL-DOWN");
+    Serial.print("OK START ROLL-DOWN "); Serial.println(millis());
+    motor.setSpeed(255);  // set max available speed
     motor.backward();
 }
 
@@ -123,7 +132,7 @@ Fsm fsm_roblin(&state_idle);
 
 void cmd_rollup() {
     if (!at_top.blind()) {
-      Serial.println("ERR ALREADY AT TOP");
+      Serial.println("OK ALREADY AT TOP");
       return;
     }
     fsm_roblin.trigger(EV_ROLL_UP);
@@ -131,7 +140,7 @@ void cmd_rollup() {
 
 void cmd_rolldown() {
     if (at_bottom.blind()) {
-      Serial.println("ERR ALREADY AT BOTTOM");
+      Serial.println("OK ALREADY AT BOTTOM");
       return;
     }
     fsm_roblin.trigger(EV_ROLL_DOWN);
@@ -150,8 +159,7 @@ void setup() {
   Serial.begin(57600);
   Serial.println("OK ROLLER-BLIND 1.0\n");
 
-  motor.stop();         // stop motor
-  motor.setSpeed(255);  // set max available speed
+  motor.stop(); // stop motor
 
   // bind sensors to superposition
   at_top.bind(&fsm_roblin,    0,            EV_AT_TOP);
@@ -162,8 +170,8 @@ void setup() {
   fsm_roblin.add_transition(&state_idle, &state_rollup, EV_ROLL_UP, NULL);
   fsm_roblin.add_transition(&state_idle, &state_rolldown, EV_ROLL_DOWN, NULL);
 
-  fsm_roblin.add_timed_transition(&state_rolldown, &state_idle, 10001, NULL);
-  fsm_roblin.add_timed_transition(&state_rollup, &state_idle, 10002, NULL);
+  fsm_roblin.add_timed_transition(&state_rolldown, &state_idle, TIMEOUT_DOWN, NULL);
+  fsm_roblin.add_timed_transition(&state_rollup, &state_idle, TIMEOUT_UP, NULL);
 
   fsm_roblin.add_transition(&state_rollup, &state_idle, EV_UNKNOWN_COMMAND, NULL);
   fsm_roblin.add_transition(&state_rolldown, &state_idle, EV_UNKNOWN_COMMAND, NULL);
