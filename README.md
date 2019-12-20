@@ -6,4 +6,4 @@
 
 ## FSM Diagram
 
-![Diagram](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/RushOnline/rollerblind/master/fsm-diagram.txt)
+![Diagram](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/RushOnline/rollerblind/master/rollerblind.ino)
