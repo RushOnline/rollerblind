@@ -7,6 +7,8 @@ title Roll Blind
 state Idle
 state RollUp
 state RollDown
+state SlowUp
+state SlowDown
 
 [*] --> Idle
 
@@ -14,14 +16,17 @@ Idle --> RollUp : IRKeyUp
 Idle -> RollDown : IRKeyDown
 
 RollUp -> Idle : IRKeyOK
-RollUp -> Idle : SensorUp
-RollUp -> Idle : Timeout
+RollUp -> Idle : TimeoutUp
+RollUp --> SlowUp : SensorUp
+
+SlowUp -> Idle : SlowTimeout
+SlowDown -> Idle : SlowTimeout
 
 note "All transitions to action state must add\na timed transition back to Idle state" as N1
 
 RollDown --> Idle : IRKeyOK
-RollDown --> Idle : SensorDown
-RollDown --> Idle : Timeout
+RollDown --> Idle : TimeoutDown
+RollDown --> SlowDown : SensorDown
 
 
 @enduml
