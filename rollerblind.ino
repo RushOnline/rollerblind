@@ -48,6 +48,8 @@ RollDown --> CloseDown : SensorDown
 #define MOTOR_IN1     12
 #define MOTOR_IN2     11
 
+#define BEEP_PIN	7
+
 #define IR_KEY_UP         0xFF629D
 #define IR_KEY_DOWN       0xFFA857
 #define IR_KEY_ASTERIX    0xFF42BD
@@ -192,6 +194,70 @@ void cmd_stop() {
     fsm_roblin.trigger(EV_UNKNOWN_COMMAND);
 }
 
+class Buzzer {
+  int m_delay;
+  int m_count;
+
+  bool m_alert;
+  int  m_alert_delay;
+public:
+  Buzzer() : m_delay(0), m_count(0), m_alert(false) {}
+
+  void setup() {
+    pinMode(BEEP_PIN, OUTPUT);
+    digitalWrite(BEEP_PIN, HIGH);
+    tone(false);
+  }
+
+  void alert(bool _alert) {
+    m_alert = _alert;
+    m_alert_delay = 0;
+  }
+
+  void beep() {
+    m_delay = 50;
+    m_count = 1;
+  }
+
+  void tone(bool on) {
+//    Serial.print("MSG TONE ");
+    //Serial.println( on );
+    digitalWrite(BEEP_PIN, on ? LOW : HIGH);
+  }
+
+  void run() {
+
+    if (!m_count) {
+      if (m_alert) {
+        if (m_alert_delay) {
+          m_alert_delay--;
+          delay(50);
+          return;
+        }
+        tone(true);
+        delay(50);
+        tone(false);
+        m_alert_delay = 19;
+      }
+      delay(50);
+      return;
+    }
+
+    Serial.print("MSG RUN ");
+    Serial.println( m_count );
+
+    while (m_count--) {
+      tone(true);
+      delay(m_delay);
+      tone(false);
+      if (m_count) delay(m_delay);
+    }
+    m_count = 0;
+
+  }
+};
+
+Buzzer buzzer;
 
 void setup() {
   Serial.begin(57600);
@@ -221,6 +287,7 @@ void setup() {
   fsm_roblin.add_timed_transition(&state_slowup, &state_idle, TIMEOUT_CLOSEDOWN, NULL);
   fsm_roblin.add_timed_transition(&state_slowdown, &state_idle, TIMEOUT_CLOSEUP, NULL);
 
+  buzzer.setup();
 }
 
 void loop() {
@@ -235,22 +302,30 @@ void loop() {
 
     if (results.value == IR_KEY_UP) {
       cmd_rollup();
+      buzzer.beep();
     } else if (results.value == IR_KEY_DOWN) {
       cmd_rolldown();
+      buzzer.beep();
     } else if (results.value == IR_KEY_ASTERIX) {
       Serial.println( "MSG FORCE SENSORS OFF" );
       at_top.disable(SENSOR_ON);
       at_bottom.disable(SENSOR_OFF);
+      buzzer.alert(true);
+      buzzer.beep();
     } else if (results.value == IR_KEY_HASH) {
       Serial.println( "MSG FORCE SENSORS ON" );
       at_top.enable();
       at_bottom.enable();
+      buzzer.alert(false);
+      buzzer.beep();
     } else if (results.value == IR_KEY_1) {
       Serial.println( "MSG FAKE SENSOR TOP" );
       fsm_roblin.trigger(EV_AT_TOP);
+      buzzer.beep();
     } else if (results.value == IR_KEY_3) {
       Serial.println( "MSG FAKE SENSOR BOTTOM" );
       fsm_roblin.trigger(EV_AT_BOTTOM);
+      buzzer.beep();
     } else {
       cmd_stop();
     }
@@ -273,7 +348,7 @@ void loop() {
   at_bottom.update();
 
   fsm_roblin.run_machine();
-  delay(50);
-  
-}
 
+  // Buzzer is running last and call delay() (!!!) from run()
+  buzzer.run();
+}
